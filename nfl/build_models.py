@@ -56,21 +56,19 @@ def quarterback_data():
     #    print (qb_data["name"][i], qb_data["draft_pos"][i], qb_data["seasons"][i], qb_data["combine"][i])
     
     # seasons played dataset (nan if exercise not performed)
-    if not os.path.exists(f"{cur_dir}/data/qb_seasons.pkl"):
-        x = []
-        y = []
-        for i in range(len(qb_data["name"])):
-            if qb_data["seasons"][i] >= 0:
-                x.append(qb_data["combine"][i])
-                y.append([qb_data["seasons"][i], qb_data["draft_pos"][i]])
-        x = np.array(x, dtype=float)
-        y = np.array(y, dtype=float)
+    x = []
+    y = []
+    for i in range(len(qb_data["name"])):
+        if qb_data["seasons"][i] >= 0:
+            x.append(qb_data["combine"][i])
+            y.append([qb_data["seasons"][i], qb_data["draft_pos"][i]])
+    x = np.array(x, dtype=float)
+    y = np.array(y, dtype=float)
 
-        with open(f"{cur_dir}/data/qb_seasons.pkl", "wb") as fout:
-            pickle.dump((x,y), fout)
-    
+    return (x,y)
 
-def quarterback_predict():
+
+def quarterback_seasons(x, y):
     '''
     Will want to predict seasons played. (normalize data)
     Then, for each season: 
@@ -79,17 +77,13 @@ def quarterback_predict():
     -sacks (per game?), fumbles (per game?)
     -passer rating?
     '''
-    # load x,y from seasons
-    with open(f"{cur_dir}/data/qb_seasons.pkl", "rb") as fin:
-        x, y = pickle.load(fin)
-    
     # get medians (not including nan) for each exercise 
     medians = []
     for col in range(x.shape[1]):
         vals = list(filter(lambda x: not np.isnan(x), x[:,col]))
         vals.sort()
         medians.append(vals[len(vals)//2])
-    #print (medians)
+    print (medians)
 
     # one hot cols
     one_hot = np.isnan(x).astype(float)
@@ -101,15 +95,25 @@ def quarterback_predict():
         x[:,col][np.nonzero(one_hot[:,col])] = median
     #print (x)
 
-    # add one hot cols to data
-    x = np.hstack((x, one_hot))
+    # add one hot cols to data (1 meaning they did exercise, don't need height/weight)
+    x = np.hstack((x, np.abs(one_hot[:,2:]-1)))
     #print (x)
 
     # train, predict
     model = LinearRegression()
-    model.fit(x, y)     
+    model.fit(x, y)    
+    # can pickle dump this model, then don't need data 
+    with open(f"{cur_dir}/models/qb_seasons.pkl", "wb") as fout:
+        pickle.dump(model, fout)
+
+
+def quarterback_stats(x, y):
+    '''
+    '''
+    pass
 
 
 if __name__ == "__main__":
-    quarterback_data()
-    quarterback_predict()
+    (x,y) = quarterback_data()
+    quarterback_seasons(x, y)
+    quarterback_stats(x, y)
